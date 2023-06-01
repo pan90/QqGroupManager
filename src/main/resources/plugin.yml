@@ -1,0 +1,7 @@
+name: QqGroupManager
+version: '${project.version}'
+main: cn.paper_card.qqgroupmanager.QqGroupManager
+api-version: 1.19
+
+depend:
+  - PaperCardAuth
