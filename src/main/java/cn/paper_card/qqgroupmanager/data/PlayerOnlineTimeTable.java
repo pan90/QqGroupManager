@@ -2,16 +2,73 @@ package cn.paper_card.qqgroupmanager.data;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.util.LinkedList;
 
 // 记录玩家在线时长的数据表
 public class PlayerOnlineTimeTable {
 
     private final static String NAME = "player_online_time";
 
-    public PlayerOnlineTimeTable(@NotNull Connection connection) {
+    private final PreparedStatement statementInsert;
+
+    private final PreparedStatement statementQuery;
+
+    private final PreparedStatement statementAdd;
+
+    public PlayerOnlineTimeTable(@NotNull Connection connection) throws SQLException {
+        this.createTable(connection);
+
+        try {
+            this.statementInsert = connection.prepareStatement
+                    ("insert into " + NAME + " (uuid,time) values (?,?)");
+
+            this.statementQuery = connection.prepareStatement
+                    ("select time from " + NAME + " where uuid=?");
+
+            this.statementAdd = connection.prepareStatement
+                    ("update " + NAME + " set time=time+? where uuid=?");
+
+
+        } catch (SQLException e) {
+            try {
+                this.close();
+            } catch (SQLException ignored) {
+            }
+            throw e;
+        }
+
+    }
+
+    public void close() throws SQLException {
+
+        SQLException exception = null;
+
+        if (this.statementInsert != null) {
+            try {
+                this.statementInsert.close();
+            } catch (SQLException e) {
+                exception = e;
+            }
+        }
+
+        if (this.statementQuery != null) {
+            try {
+                this.statementQuery.close();
+            } catch (SQLException e) {
+                exception = e;
+            }
+        }
+
+        if (this.statementAdd != null) {
+            try {
+                this.statementAdd.close();
+            } catch (SQLException e) {
+                exception = e;
+            }
+        }
+
+        if (exception != null) throw exception;
 
     }
 
@@ -30,5 +87,43 @@ public class PlayerOnlineTimeTable {
         }
 
         statement.close();
+    }
+
+    public @NotNull LinkedList<Long> query(@NotNull String uuid) throws SQLException {
+        this.statementQuery.setString(1, uuid);
+
+        final ResultSet resultSet = this.statementQuery.executeQuery();
+
+        final LinkedList<Long> times = new LinkedList<>();
+        try {
+            while (resultSet.next()) {
+                final long time = resultSet.getLong(1);
+                times.add(time);
+            }
+        } catch (SQLException e) {
+            try {
+                resultSet.close();
+            } catch (SQLException ignored) {
+            }
+            throw e;
+        }
+
+        resultSet.close();
+
+        return times;
+    }
+
+    public int insert(@NotNull String uuid, long time) throws SQLException {
+        this.statementInsert.setString(1, uuid);
+        this.statementInsert.setLong(2, time);
+
+        return this.statementInsert.executeUpdate();
+    }
+
+    public int add(@NotNull String uuid, long time) throws SQLException {
+        this.statementAdd.setLong(1, time);
+        this.statementAdd.setString(2, uuid);
+
+        return this.statementAdd.executeUpdate();
     }
 }
