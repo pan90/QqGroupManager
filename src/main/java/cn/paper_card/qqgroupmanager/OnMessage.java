@@ -1,18 +1,19 @@
 package cn.paper_card.qqgroupmanager;
 
-import cn.paper_card.papercardauth.PaperCardAuth;
-import cn.paper_card.papercardauth.api.IUuidQqBindService;
+import cn.paper_card.qqgroupmanager.api.IAutoKick;
+import cn.paper_card.qqgroupmanager.api.IOnlineTimeService;
 import me.dreamvoid.miraimc.api.bot.MiraiGroup;
+import me.dreamvoid.miraimc.api.bot.group.MiraiMemberActive;
 import me.dreamvoid.miraimc.api.bot.group.MiraiNormalMember;
 import me.dreamvoid.miraimc.bukkit.event.group.member.MiraiMemberJoinEvent;
 import me.dreamvoid.miraimc.bukkit.event.message.passive.MiraiGroupMessageEvent;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class OnMessage implements Listener {
 
@@ -48,108 +49,138 @@ public class OnMessage implements Listener {
         return false;
     }
 
-    public void handleViewOneDayPlayer(@NotNull MiraiGroupMessageEvent event) {
-        final long groupID = event.getGroupID();
-        if (groupID != this.plugin.getQqGroupId()) return;
-        if (event.getSenderPermission() < 1) return;
+    public boolean handleViewOneDayPlayer(@NotNull MiraiGroupMessageEvent event) {
 
+        if (event.getSenderPermission() < 1) return false;
 
         final String message = event.getMessage();
-
-
-        if (message == null) return;
-        if (!message.equals("查看一日游玩家名单")) return;
+        if (message == null) return false;
+        if (!message.equals("查看一日游玩家名单")) return false;
 
         final MiraiGroup group = event.getGroup();
 
-
-        final LinkedList<OfflinePlayer> players = new LinkedList<>();
-        final long curTime = System.currentTimeMillis();
-        for (final OfflinePlayer offlinePlayer : this.plugin.getServer().getOfflinePlayers()) {
-            if (this.isOneDayPlayer(offlinePlayer, curTime)) {
-                players.add(offlinePlayer);
-            }
+        final ArrayList<IAutoKick.OneDayPlayerMember> playOneDayList;
+        try {
+            playOneDayList = this.plugin.getAutoKick().createPlayOneDayList(group);
+        } catch (Exception e) {
+            group.sendMessage("@%s 异常：%s".formatted(event.getSenderName(), e));
+            e.printStackTrace();
+            return true;
         }
 
         final StringBuilder builder = new StringBuilder();
-        builder.append("一共%d个可能的一日游玩家：\n".formatted(players.size()));
+        builder.append("\n");
         int i = 1;
-        builder.append("序号 | 名字\n");
-        for (final OfflinePlayer player : players) {
-            String name = player.getName();
-            if (name == null) name = player.getUniqueId().toString();
+        final long curTime = System.currentTimeMillis();
+        builder.append("序号 | QQ | 昵称 | 游戏名 | 几天前上线\n");
+        for (final IAutoKick.OneDayPlayerMember oneDayPlayerMember : playOneDayList) {
 
-            builder.append("%d | %s\n".formatted(i, name));
+            final long t = curTime - oneDayPlayerMember.offlinePlayer().getLastSeen();
+            final long days = t / (24 * 60 * 60 * 1000);
+
+            builder.append("%d | %d | %s | %s | %d\n".formatted(
+                    i,
+                    oneDayPlayerMember.member().getId(),
+                    oneDayPlayerMember.member().getNick(),
+                    oneDayPlayerMember.offlinePlayer().getName(),
+                    days
+            ));
+            ++i;
+        }
+
+        group.sendMessage(builder.toString());
+
+        return true;
+    }
+
+    private boolean handleViewNotBind(@NotNull MiraiGroupMessageEvent event) {
+
+        if (event.getSenderPermission() < 1) return false;
+
+        final String message = event.getMessage();
+
+        if (message == null) return false;
+        if (!message.equals("查看未添加白名单QQ")) return false;
+
+        final MiraiGroup group = event.getGroup();
+
+        final ArrayList<MiraiNormalMember> notBindMembers;
+        try {
+            notBindMembers = plugin.getAutoKick().createNotBindList(group);
+        } catch (Exception e) {
+            group.sendMessage("@%s 异常：%s".formatted(event.getSenderName(), e));
+            e.printStackTrace();
+            return true;
+        }
+
+        final StringBuilder builder = new StringBuilder();
+        int i = 1;
+        builder.append("序号 | QQ | 昵称 | 等级\n");
+        for (final MiraiNormalMember notBindMember : notBindMembers) {
+
+            final MiraiMemberActive active = notBindMember.getActive();
+
+            // 经过测试，这个是群等级
+            final int temperature = active.getTemperature();
+
+            builder.append("%d | %d | %s | %d\n".formatted(
+                    i, notBindMember.getId(), notBindMember.getNick(), temperature
+            ));
+            ++i;
+        }
+
+        group.sendMessage(builder.toString());
+
+        return true;
+    }
+
+    private boolean handleViewOnlineTop(@NotNull MiraiGroupMessageEvent event) {
+        if (event.getSenderPermission() < 1) return false;
+
+        final String message = event.getMessage();
+        if (message == null) return false;
+        if (!message.equals("查看在线时长排行榜")) return false;
+
+        final MiraiGroup group = event.getGroup();
+
+        final List<IOnlineTimeService.Storage.Record> records;
+
+        try {
+            records = plugin.getOnlineTimeService().getStorage().queryAll();
+        } catch (Exception e) {
+            group.sendMessage("@%s 异常：%s".formatted(event.getSenderName(), e));
+            e.printStackTrace();
+            return true;
+        }
+
+        records.sort((o1, o2) -> (int) (o2.time() - o1.time()));
+
+        final StringBuilder builder = new StringBuilder();
+        builder.append("序号 | 游戏名 | 在线时长（时）");
+
+        int i = 1;
+        for (final IOnlineTimeService.Storage.Record record : records) {
+            final String name = plugin.getServer().getOfflinePlayer(record.uuid()).getName();
+            final long hours = record.time() / (60 * 60 * 1000);
+
+            builder.append("%d | %s | %d \n".formatted(i, name, hours));
 
             ++i;
         }
 
         group.sendMessage(builder.toString());
+
+        return true;
     }
 
     @EventHandler
     public void on(@NotNull MiraiGroupMessageEvent event) {
 
-        this.handleViewOneDayPlayer(event);
-
         final long groupID = event.getGroupID();
         if (groupID != this.plugin.getQqGroupId()) return;
-        if (event.getSenderPermission() < 1) return;
 
-
-        final String message = event.getMessage();
-
-
-        if (message == null) return;
-        if (!message.equals("查看未添加白名单QQ")) return;
-
-        final MiraiGroup group = event.getGroup();
-
-        final List<MiraiNormalMember> members = group.getMembers();
-
-        final Plugin paperCardAuth = this.plugin.getServer().getPluginManager().getPlugin("PaperCardAuth");
-        if (!(paperCardAuth instanceof PaperCardAuth auth)) return;
-
-        final IUuidQqBindService uuidQqBindService = auth.getWhitelistManager().getUuidQqBindService();
-
-        final ArrayList<MiraiNormalMember> notBindMembers = new ArrayList<>();
-
-        for (final MiraiNormalMember member : members) {
-            final UUID uuid;
-            try {
-                uuid = uuidQqBindService.queryByQq(member.getId());
-            } catch (Exception e) {
-                group.sendMessage("@%s 异常：%s".formatted(event.getSenderName(), e));
-                return;
-            }
-
-            if (uuid == null) notBindMembers.add(member);
-        }
-
-        final StringBuilder builder = new StringBuilder();
-        int i = 1;
-        final LinkedList<Integer> integers = new LinkedList<>();
-        builder.append("序号 | QQ | Remark | Nick | 头衔");
-        for (final MiraiNormalMember notBindMember : notBindMembers) {
-            final String specialTitle = notBindMember.getSpecialTitle();
-
-            builder.append("%d | %d | %s | %s | %s\n".formatted(
-                    i, notBindMember.getId(), notBindMember.getRemark(), notBindMember.getNick(), specialTitle
-            ));
-
-            if (specialTitle != null && !specialTitle.equals("")) {
-                integers.add(i);
-            }
-
-            ++i;
-        }
-
-        builder.append("有自定义头衔的（序号）：");
-        for (final Integer integer : integers) {
-            builder.append(integer);
-            builder.append(", ");
-        }
-
-        group.sendMessage(builder.toString());
+        if (this.handleViewOneDayPlayer(event)) return;
+        if (this.handleViewNotBind(event)) return;
+        this.handleViewOnlineTop(event);
     }
 }
