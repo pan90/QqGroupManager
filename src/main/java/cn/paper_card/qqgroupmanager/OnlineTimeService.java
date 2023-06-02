@@ -11,15 +11,19 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class OnlineTimeService implements IOnlineTimeService {
 
     private final @NotNull QqGroupManager plugin;
 
     private final @NotNull Storage storage;
+
+    private final HashMap<UUID, Long> beginTimes = new HashMap<>();
+    private final Object beginTimesLock = new Object();
 
     public OnlineTimeService(@NotNull QqGroupManager plugin) {
         this.plugin = plugin;
@@ -31,13 +35,16 @@ public class OnlineTimeService implements IOnlineTimeService {
     public void onEnable() {
         this.plugin.getServer().getPluginManager().registerEvents(new Listener() {
 
-            private final ConcurrentHashMap<UUID, Long> joinTimes = new ConcurrentHashMap<>();
-
             @EventHandler
             public void on(@NotNull PlayerJoinEvent event) {
                 // 记录开始上线时间
                 plugin.getServer().getScheduler().runTaskAsynchronously(plugin,
-                        () -> this.joinTimes.put(event.getPlayer().getUniqueId(), System.currentTimeMillis()));
+                        () -> {
+                            synchronized (beginTimesLock) {
+                                beginTimes.put(event.getPlayer().getUniqueId(), System.currentTimeMillis());
+                            }
+                        });
+
             }
 
             @EventHandler
@@ -47,8 +54,13 @@ public class OnlineTimeService implements IOnlineTimeService {
 
                     final UUID id = event.getPlayer().getUniqueId();
                     final String name = event.getPlayer().getName();
-                    final Long joinTime = this.joinTimes.get(id);
+                    final Long joinTime;
+                    synchronized (beginTimesLock) {
+                        joinTime = beginTimes.remove(id);
+                    }
+
                     if (joinTime == null) return;
+
                     final long onlineTime = System.currentTimeMillis() - joinTime;
                     try {
                         plugin.getOnlineTimeService().getStorage().addTime(id, onlineTime);
@@ -64,7 +76,23 @@ public class OnlineTimeService implements IOnlineTimeService {
 
     @Override
     public void onDisable() {
+        final long curTime = System.currentTimeMillis();
+        synchronized (beginTimesLock) {
+            for (final UUID uuid : beginTimes.keySet()) {
+                final Long beginTime = beginTimes.get(uuid);
+                if (beginTime == null) continue;
 
+                final long t = curTime - beginTime;
+
+                try {
+                    this.storage.addTime(uuid, t);
+                } catch (Exception e) {
+                    this.plugin.getLogger().severe("异常：" + e);
+                    e.printStackTrace();
+                }
+            }
+            beginTimes.clear();
+        }
     }
 
     @Override
@@ -98,6 +126,21 @@ public class OnlineTimeService implements IOnlineTimeService {
                 } else {
                     return null;
                 }
+            }
+        }
+
+        @Override
+        public @NotNull List<Record> queryAll() throws Exception {
+            synchronized (this) {
+                final PlayerOnlineTimeTable table1 = this.getTable();
+                final LinkedList<PlayerOnlineTimeTable.Record> records = table1.queryAll();
+
+                final LinkedList<Record> records1 = new LinkedList<>();
+                for (PlayerOnlineTimeTable.Record record : records) {
+                    records1.add(new Record(UUID.fromString(record.uuid()), record.time()));
+                }
+
+                return records1;
             }
         }
 

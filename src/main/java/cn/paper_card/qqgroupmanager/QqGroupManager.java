@@ -1,5 +1,6 @@
 package cn.paper_card.qqgroupmanager;
 
+import cn.paper_card.qqgroupmanager.api.IAutoKick;
 import cn.paper_card.qqgroupmanager.api.IOnlineTimeService;
 import cn.paper_card.qqgroupmanager.data.DataBase;
 import me.dreamvoid.miraimc.api.MiraiBot;
@@ -15,10 +16,13 @@ public final class QqGroupManager extends JavaPlugin {
 
     private final @NotNull IOnlineTimeService onlineTimeService;
 
+    private final @NotNull IAutoKick autoKick;
+
     private DataBase dataBase = null;
 
     public QqGroupManager() {
         this.onlineTimeService = new OnlineTimeService(this);
+        this.autoKick = new AutoKickImpl(this);
     }
 
     public @NotNull DataBase getDataBase() throws SQLException, ClassNotFoundException {
@@ -48,6 +52,10 @@ public final class QqGroupManager extends JavaPlugin {
 
     public @NotNull IOnlineTimeService getOnlineTimeService() {
         return this.onlineTimeService;
+    }
+
+    public @NotNull IAutoKick getAutoKick() {
+        return this.autoKick;
     }
 
     public @Nullable MiraiGroup findGroup() {
@@ -82,6 +90,7 @@ public final class QqGroupManager extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // 必须在关闭数据库之前
         this.onlineTimeService.onDisable();
 
         if (this.dataBase != null) {

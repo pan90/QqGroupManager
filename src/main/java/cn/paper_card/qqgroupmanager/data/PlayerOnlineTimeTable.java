@@ -8,6 +8,9 @@ import java.util.LinkedList;
 // 记录玩家在线时长的数据表
 public class PlayerOnlineTimeTable {
 
+    public record Record(String uuid, long time) {
+    }
+
     private final static String NAME = "player_online_time";
 
     private final PreparedStatement statementInsert;
@@ -15,6 +18,8 @@ public class PlayerOnlineTimeTable {
     private final PreparedStatement statementQuery;
 
     private final PreparedStatement statementAdd;
+
+    private final PreparedStatement statementQueryAll;
 
     public PlayerOnlineTimeTable(@NotNull Connection connection) throws SQLException {
         this.createTable(connection);
@@ -28,6 +33,9 @@ public class PlayerOnlineTimeTable {
 
             this.statementAdd = connection.prepareStatement
                     ("update " + NAME + " set time=time+? where uuid=?");
+
+            this.statementQueryAll = connection.prepareStatement
+                    ("select uuid,time from " + NAME);
 
 
         } catch (SQLException e) {
@@ -68,6 +76,15 @@ public class PlayerOnlineTimeTable {
             }
         }
 
+
+        if (this.statementQueryAll != null) {
+            try {
+                this.statementQueryAll.close();
+            } catch (SQLException e) {
+                exception = e;
+            }
+        }
+
         if (exception != null) throw exception;
 
     }
@@ -99,6 +116,30 @@ public class PlayerOnlineTimeTable {
             while (resultSet.next()) {
                 final long time = resultSet.getLong(1);
                 times.add(time);
+            }
+        } catch (SQLException e) {
+            try {
+                resultSet.close();
+            } catch (SQLException ignored) {
+            }
+            throw e;
+        }
+
+        resultSet.close();
+
+        return times;
+    }
+
+    public @NotNull LinkedList<Record> queryAll() throws SQLException {
+
+        final ResultSet resultSet = this.statementQueryAll.executeQuery();
+
+        final LinkedList<Record> times = new LinkedList<>();
+        try {
+            while (resultSet.next()) {
+                final String uuid = resultSet.getString(1);
+                final long time = resultSet.getLong(2);
+                times.add(new Record(uuid, time));
             }
         } catch (SQLException e) {
             try {
