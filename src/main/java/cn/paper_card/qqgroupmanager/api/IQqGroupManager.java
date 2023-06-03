@@ -12,9 +12,11 @@ public interface IQqGroupManager {
     void sendMessageToAuditGroupLater(@NotNull String message);
 
     // 在大群中根据QQ号查找群成员
-    @Nullable IGroupMemberInfo findGroupMember(long qq);
+    @Nullable
+    IGroupMemberInfo findGroupMember(long qq);
 
-    @Nullable String queryMemberRemark(long qq);
+    @Nullable
+    String queryMemberRemark(long qq);
 
     // 消息监听
     interface MessageEvent {

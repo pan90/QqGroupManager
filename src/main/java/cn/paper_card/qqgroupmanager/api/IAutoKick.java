@@ -6,6 +6,7 @@ import me.dreamvoid.miraimc.api.bot.group.MiraiNormalMember;
 import me.dreamvoid.miraimc.bukkit.event.message.passive.MiraiGroupMessageEvent;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,13 +20,21 @@ public interface IAutoKick {
         LongTimeNoPlay
     }
 
-    record OneDayPlayerMember(@NotNull MiraiNormalMember member, @NotNull OfflinePlayer offlinePlayer) {
+    record OneDayPlayerMember(@NotNull MiraiNormalMember member, @NotNull OfflinePlayer player) {
     }
 
-    record NotEnoughTimeMember(@NotNull MiraiNormalMember member, long avgWeakOnlineTime) {
+    record NotEnoughTimeMember(
+            @NotNull MiraiNormalMember member,
+            @NotNull OfflinePlayer player,
+            double avgWeakOnlineTime
+    ) {
     }
 
-    record Info(long qq, String nick, String remark, UUID uuid, KickType type) {
+    record Info(
+            @NotNull MiraiNormalMember member,
+            @Nullable OfflinePlayer offlinePlayer,
+            @NotNull KickType kickType,
+            @Nullable String extra) {
     }
 
     boolean handleMessage(@NotNull MiraiGroupMessageEvent event);
@@ -42,4 +51,8 @@ public interface IAutoKick {
     @NotNull List<Info> createList(int num) throws Exception;
 
     void doKick(List<Info> info) throws Exception;
+
+    void onEnable();
+
+    void onDisable();
 }

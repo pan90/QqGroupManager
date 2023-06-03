@@ -84,6 +84,7 @@ public final class QqGroupManager extends JavaPlugin {
             this.getLogger().severe("连接数据库时异常：" + e);
         }
 
+        this.autoKick.onEnable();
         this.onlineTimeService.onEnable();
 
     }
@@ -92,6 +93,7 @@ public final class QqGroupManager extends JavaPlugin {
     public void onDisable() {
         // 必须在关闭数据库之前
         this.onlineTimeService.onDisable();
+        this.autoKick.onDisable();
 
         if (this.dataBase != null) {
             try {
