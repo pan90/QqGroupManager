@@ -8,9 +8,9 @@ import java.util.UUID;
 
 public interface IOnlineTimeService {
 
-    void onEnable();
+    void init();
 
-    void onDisable();
+    void destroy();
 
     @NotNull Storage getStorage();
 
