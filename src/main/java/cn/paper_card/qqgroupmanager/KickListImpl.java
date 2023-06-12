@@ -6,7 +6,6 @@ import cn.paper_card.qqgroupmanager.api.IKickList;
 import cn.paper_card.qqgroupmanager.api.IOnlineTimeService;
 import me.dreamvoid.miraimc.api.bot.MiraiGroup;
 import me.dreamvoid.miraimc.api.bot.group.MiraiNormalMember;
-import me.dreamvoid.miraimc.bukkit.event.message.passive.MiraiGroupMessageEvent;
 import net.kyori.adventure.text.Component;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.PluginCommand;
@@ -223,28 +222,6 @@ class KickListImpl implements IKickList {
         return members1;
     }
 
-
-    @Override
-    public boolean handleMessage(@NotNull MiraiGroupMessageEvent event) {
-        // 空消息
-        final String message = event.getMessage();
-        if (message == null) return false;
-
-        // 不是管理员
-        if (event.getSenderPermission() < 1) return false;
-
-        final KickListCmd kickListCmd = new KickListCmd(plugin, event);
-        if (!message.startsWith(kickListCmd.getLabel())) return false;
-        final String[] s = message.split(" ");
-        if (s.length > 0 && kickListCmd.getLabel().equals(s[0])) {
-            final String[] ss = new String[s.length - 1];
-            System.arraycopy(s, 1, ss, 0, ss.length);
-            kickListCmd.execute(ss);
-            return true;
-        }
-        return false;
-    }
-
     @Override
     public @NotNull List<Info> createList(int num) throws Exception {
         final MiraiGroup group = this.plugin.findGroup();
@@ -417,7 +394,7 @@ class KickListImpl implements IKickList {
     }
 
     @Override
-    public void onEnable() {
+    public void init() {
         final PluginCommand command = this.plugin.getCommand("get-member-info");
 
         assert command != null;
@@ -476,7 +453,7 @@ class KickListImpl implements IKickList {
     }
 
     @Override
-    public void onDisable() {
+    public void destroy() {
 
     }
 }

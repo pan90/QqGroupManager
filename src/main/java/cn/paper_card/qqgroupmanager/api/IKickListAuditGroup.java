@@ -1,6 +1,5 @@
 package cn.paper_card.qqgroupmanager.api;
 
-import me.dreamvoid.miraimc.bukkit.event.message.passive.MiraiGroupMessageEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,5 +43,4 @@ public interface IKickListAuditGroup {
 
     void starkKick(@NotNull List<MemberInfo> list, @NotNull OnKickFinished onKickFinished) throws Exception;
 
-    boolean handleMessage(@NotNull MiraiGroupMessageEvent event);
 }

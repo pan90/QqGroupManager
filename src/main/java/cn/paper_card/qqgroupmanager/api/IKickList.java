@@ -8,7 +8,6 @@ import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public interface IKickList {
@@ -46,8 +45,6 @@ public interface IKickList {
         void on(@NotNull List<Info> kicked, @NotNull List<Info> notKick);
     }
 
-    boolean handleMessage(@NotNull MiraiGroupMessageEvent event);
-
     // 生成一个未绑定游戏账号的QQ列表，按群等级由低到高排序
     @NotNull List<MiraiNormalMember> createNotBindList(@NotNull MiraiGroup group, int num) throws Exception;
 
@@ -67,7 +64,7 @@ public interface IKickList {
 
     void startKick(@NotNull List<Info> info, @NotNull OnKickFinish onKickFinish) throws Exception;
 
-    void onEnable();
+    void init();
 
-    void onDisable();
+    void destroy();
 }

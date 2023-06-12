@@ -1,6 +1,8 @@
 package cn.paper_card.qqgroupmanager;
 
+import me.dreamvoid.miraimc.bukkit.event.message.passive.MiraiGroupMessageEvent;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 
@@ -15,7 +17,7 @@ abstract class TheCommand {
         return this.label;
     }
 
-    abstract void execute(@NotNull String[] args);
+    abstract void execute(@NotNull String[] args, @NotNull MiraiGroupMessageEvent event);
 
 
     static class HasSub extends TheCommand {
@@ -31,23 +33,23 @@ abstract class TheCommand {
             this.subCommands.put(cmd.getLabel(), cmd);
         }
 
-        void onNotFound(String subCmd) {
+        void onNotFound(@Nullable String subCmd, @NotNull MiraiGroupMessageEvent event) {
         }
 
         @Override
-        void execute(@NotNull String[] args) {
+        void execute(@NotNull String[] args, @NotNull MiraiGroupMessageEvent event) {
             if (args.length > 0) {
                 final String label = args[0];
                 final TheCommand tc = this.subCommands.get(label);
                 if (tc != null) {
                     final String[] args2 = new String[args.length - 1];
                     System.arraycopy(args, 1, args2, 0, args2.length);
-                    tc.execute(args2);
+                    tc.execute(args2, event);
                 } else {
-                    this.onNotFound(label);
+                    this.onNotFound(label, event);
                 }
             } else {
-                this.onNotFound(null);
+                this.onNotFound(null, event);
             }
         }
     }
