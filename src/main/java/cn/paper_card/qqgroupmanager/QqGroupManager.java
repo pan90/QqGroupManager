@@ -1,9 +1,6 @@
 package cn.paper_card.qqgroupmanager;
 
-import cn.paper_card.qqgroupmanager.api.IKickList;
-import cn.paper_card.qqgroupmanager.api.IKickListAuditGroup;
-import cn.paper_card.qqgroupmanager.api.IOnlineTimeService;
-import cn.paper_card.qqgroupmanager.api.IQqGroupManager;
+import cn.paper_card.qqgroupmanager.api.*;
 import me.dreamvoid.miraimc.api.MiraiBot;
 import me.dreamvoid.miraimc.api.bot.MiraiGroup;
 import me.dreamvoid.miraimc.api.bot.group.MiraiNormalMember;
@@ -23,6 +20,8 @@ public final class QqGroupManager extends JavaPlugin implements IQqGroupManager 
 
     private final @NotNull KickListCmd.SessionManager sessionManager;
 
+    private final @NotNull IQqBlackListService blackListService;
+
     private final @NotNull Utility utility;
 
     public QqGroupManager() {
@@ -31,6 +30,7 @@ public final class QqGroupManager extends JavaPlugin implements IQqGroupManager 
         this.kickListAuditGroup = new KickListAuditGroupImpl(this);
         this.sessionManager = new KickListCmd.SessionManager();
         this.utility = new Utility();
+        this.blackListService = new QqBlackListServiceImpl(this);
     }
 
 
@@ -70,6 +70,10 @@ public final class QqGroupManager extends JavaPlugin implements IQqGroupManager 
 
     public @NotNull IKickListAuditGroup getKickListAuditGroup() {
         return this.kickListAuditGroup;
+    }
+
+    public @NotNull IQqBlackListService getBlackListService() {
+        return this.blackListService;
     }
 
     public @Nullable MiraiGroup findGroup() {
@@ -122,15 +126,16 @@ public final class QqGroupManager extends JavaPlugin implements IQqGroupManager 
         manager.registerEvents(new OnMessage(this), this);
         manager.registerEvents(new OnJoinGroup(this), this);
 
-        this.autoKick.onEnable();
+        this.autoKick.init();
         this.onlineTimeService.init();
+        this.blackListService.init();
     }
 
     @Override
     public void onDisable() {
-        // 必须在关闭数据库之前
+        this.blackListService.destroy();
         this.onlineTimeService.destroy();
-        this.autoKick.onDisable();
+        this.autoKick.destroy();
 
     }
 

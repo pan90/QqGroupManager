@@ -6,6 +6,7 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 
 class DatabaseConnection {
@@ -36,5 +37,22 @@ class DatabaseConnection {
 
     void close() throws SQLException {
         this.connection.close();
+    }
+
+    static void createTable(@NotNull Connection connection, @NotNull String sql) throws SQLException {
+
+        final Statement statement = connection.createStatement();
+
+        try {
+            statement.executeUpdate(sql);
+        } catch (SQLException e) {
+            try {
+                statement.close();
+            } catch (SQLException ignored) {
+            }
+            throw e;
+        }
+
+        statement.close();
     }
 }

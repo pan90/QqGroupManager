@@ -3,7 +3,6 @@ package cn.paper_card.qqgroupmanager;
 import cn.paper_card.qqgroupmanager.api.IKickListAuditGroup;
 import me.dreamvoid.miraimc.api.bot.MiraiGroup;
 import me.dreamvoid.miraimc.api.bot.group.MiraiNormalMember;
-import me.dreamvoid.miraimc.bukkit.event.message.passive.MiraiGroupMessageEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -193,31 +192,5 @@ class KickListAuditGroupImpl implements IKickListAuditGroup {
 
             onKickFinished.on(kicked, notKick);
         });
-    }
-
-
-    @Override
-    public boolean handleMessage(@NotNull MiraiGroupMessageEvent event) {
-
-        if (event.getSenderPermission() < 1) return false; // 不是管理员
-
-        final String message = event.getMessage();
-        if (message == null) return false; // 空消息
-
-        final String[] args = message.split(" ");
-        if (args.length < 1) return false; // 内容
-
-        final KickListAuditCmd cmd = new KickListAuditCmd(plugin, event);
-
-        if (!args[0].equals(cmd.getLabel())) return false;
-
-        // 缩减参数
-        final String[] args2 = new String[args.length - 1];
-        System.arraycopy(args, 1, args2, 0, args2.length);
-
-        // 执行命令
-        cmd.execute(args2);
-
-        return true;
     }
 }

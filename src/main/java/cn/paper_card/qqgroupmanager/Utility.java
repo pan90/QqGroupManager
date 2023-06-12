@@ -1,5 +1,6 @@
 package cn.paper_card.qqgroupmanager;
 
+import me.dreamvoid.miraimc.api.bot.MiraiGroup;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,5 +23,24 @@ class Utility {
             }
         }
         return null;
+    }
+
+    static void sendAtMessage(@NotNull MiraiGroup group, long qq, @NotNull String message) {
+        group.sendMessageMirai("[mirai:at:%d] %s".formatted(qq, message));
+    }
+
+    static class AtMessageSender {
+        private final @NotNull MiraiGroup group;
+        private final long qq;
+
+
+        AtMessageSender(@NotNull MiraiGroup group, long qq) {
+            this.group = group;
+            this.qq = qq;
+        }
+
+        void sendMessage(@NotNull String message) {
+            Utility.sendAtMessage(this.group, this.qq, message);
+        }
     }
 }

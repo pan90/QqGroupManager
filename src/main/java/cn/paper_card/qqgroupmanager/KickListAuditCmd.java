@@ -10,12 +10,10 @@ import java.util.List;
 class KickListAuditCmd extends TheCommand.HasSub {
 
     private final @NotNull QqGroupManager plugin;
-    private final @NotNull MiraiGroupMessageEvent event;
 
-    KickListAuditCmd(@NotNull QqGroupManager plugin, @NotNull MiraiGroupMessageEvent event) {
+    KickListAuditCmd(@NotNull QqGroupManager plugin) {
         super("踢出名单");
         this.plugin = plugin;
-        this.event = event;
 
         addSubCmd(new Create());
         addSubCmd(new View());
@@ -24,12 +22,8 @@ class KickListAuditCmd extends TheCommand.HasSub {
 
     }
 
-    private void sendAtMessage(@NotNull String message) {
-        final MiraiGroup group = this.event.getGroup();
-        group.sendMessageMirai("[mirai:at:%d] %s".formatted(this.event.getSenderID(), message));
-    }
 
-    private void noNotFound0(@NotNull TheCommand.HasSub cmd) {
+    private void noNotFound0(@NotNull TheCommand.HasSub cmd, @NotNull MiraiGroupMessageEvent event) {
         final StringBuilder builder = new StringBuilder("当前可用的子命令：\n");
 
         for (final String s : cmd.subCommands.keySet()) {
@@ -37,12 +31,13 @@ class KickListAuditCmd extends TheCommand.HasSub {
             builder.append('\n');
         }
 
-        sendAtMessage(builder.toString());
+        final Utility.AtMessageSender sender = new Utility.AtMessageSender(event.getGroup(), event.getSenderID());
+        sender.sendMessage(builder.toString());
     }
 
     @Override
-    void onNotFound(String subCmd) {
-        noNotFound0(this);
+    void onNotFound(String subCmd, @NotNull MiraiGroupMessageEvent event) {
+        noNotFound0(this, event);
     }
 
     class Create extends TheCommand.HasSub {
@@ -55,11 +50,11 @@ class KickListAuditCmd extends TheCommand.HasSub {
         }
 
         @Override
-        void onNotFound(String subCmd) {
-            noNotFound0(this);
+        void onNotFound(String subCmd, @NotNull MiraiGroupMessageEvent event) {
+            noNotFound0(this, event);
         }
 
-        int parseNumArg(@NotNull String[] args) throws Exception {
+        int parseNumArg(@NotNull String[] args, @NotNull Utility.AtMessageSender sender) throws Exception {
             String argNum = null;
             if (args.length > 0) argNum = args[0];
 
@@ -70,7 +65,7 @@ class KickListAuditCmd extends TheCommand.HasSub {
             try {
                 num = Integer.parseInt(argNum);
             } catch (NumberFormatException e) {
-                sendAtMessage("%s 不是一个数字！".formatted(argNum));
+                sender.sendMessage("%s 不是一个数字！".formatted(argNum));
                 throw new Exception(e);
             }
             return num;
@@ -80,12 +75,14 @@ class KickListAuditCmd extends TheCommand.HasSub {
             List<IKickListAuditGroup.MemberInfo> get(int num) throws Exception;
         }
 
-        private void onCreate(@NotNull String[] args, @NotNull GetList get) {
+        private void onCreate(@NotNull String[] args, @NotNull GetList get, @NotNull MiraiGroupMessageEvent event) {
+
+            final Utility.AtMessageSender sender = new Utility.AtMessageSender(event.getGroup(), event.getSenderID());
 
             final int num;
 
             try {
-                num = parseNumArg(args);
+                num = parseNumArg(args, sender);
             } catch (Exception ignored) {
                 return;
             }
@@ -96,7 +93,7 @@ class KickListAuditCmd extends TheCommand.HasSub {
                 list = get.get(num);
             } catch (Exception e) {
                 e.printStackTrace();
-                sendAtMessage(e.toString());
+                sender.sendMessage(e.toString());
                 return;
             }
 
@@ -105,7 +102,7 @@ class KickListAuditCmd extends TheCommand.HasSub {
             final IKickListAuditGroup.Session session = kick.getSessionManager().getSession(event.getSenderID());
             session.setKickList(list);
 
-            sendAtMessage("生成成功，人数：%d".formatted(list.size()));
+            sender.sendMessage("生成成功，人数：%d".formatted(list.size()));
 
         }
 
@@ -116,8 +113,8 @@ class KickListAuditCmd extends TheCommand.HasSub {
             }
 
             @Override
-            void execute(@NotNull String[] args) {
-                onCreate(args, num -> plugin.getKickListAuditGroup().createListSortByJoinTime(num));
+            void execute(@NotNull String[] args, @NotNull MiraiGroupMessageEvent event) {
+                onCreate(args, num -> plugin.getKickListAuditGroup().createListSortByJoinTime(num), event);
             }
         }
 
@@ -128,8 +125,8 @@ class KickListAuditCmd extends TheCommand.HasSub {
             }
 
             @Override
-            void execute(@NotNull String[] args) {
-                onCreate(args, num -> plugin.getKickListAuditGroup().createListHasJoinGroup(num));
+            void execute(@NotNull String[] args, @NotNull MiraiGroupMessageEvent event) {
+                onCreate(args, num -> plugin.getKickListAuditGroup().createListHasJoinGroup(num), event);
             }
         }
     }
@@ -141,15 +138,17 @@ class KickListAuditCmd extends TheCommand.HasSub {
         }
 
         @Override
-        void execute(@NotNull String[] args) {
+        void execute(@NotNull String[] args, @NotNull MiraiGroupMessageEvent event) {
 
             final IKickListAuditGroup kick = plugin.getKickListAuditGroup();
             final IKickListAuditGroup.Session session = kick.getSessionManager().getSession(event.getSenderID());
 
             final List<IKickListAuditGroup.MemberInfo> list = session.getKickList();
 
+            final Utility.AtMessageSender sender = new Utility.AtMessageSender(event.getGroup(), event.getSenderID());
+
             if (list == null) {
-                sendAtMessage("没有生成名单！");
+                sender.sendMessage("没有生成名单！");
                 return;
             }
 
@@ -201,30 +200,32 @@ class KickListAuditCmd extends TheCommand.HasSub {
         }
 
         @Override
-        void execute(@NotNull String[] args) {
+        void execute(@NotNull String[] args, @NotNull MiraiGroupMessageEvent event) {
 
             final IKickListAuditGroup kick = plugin.getKickListAuditGroup();
             final IKickListAuditGroup.Session session = kick.getSessionManager().getSession(event.getSenderID());
 
             final List<IKickListAuditGroup.MemberInfo> kickList = session.getKickList();
 
+            final Utility.AtMessageSender sender = new Utility.AtMessageSender(event.getGroup(), event.getSenderID());
+
             if (kickList == null) {
-                sendAtMessage("没有生成名单！");
+                sender.sendMessage("没有生成名单！");
                 return;
             }
 
             try {
 
                 kick.starkKick(kickList, (kicked, notKick) ->
-                        sendAtMessage("踢出成功：%d，踢出失败：%d".formatted(kicked.size(), notKick.size())));
+                        sender.sendMessage("踢出成功：%d，踢出失败：%d".formatted(kicked.size(), notKick.size())));
 
             } catch (Exception e) {
                 e.printStackTrace();
-                sendAtMessage(e.toString());
+                sender.sendMessage(e.toString());
                 return;
             }
 
-            sendAtMessage("已经启动踢人任务，请等待任务完成。");
+            sender.sendMessage("已经启动踢人任务，请等待任务完成。");
         }
     }
 
@@ -235,14 +236,16 @@ class KickListAuditCmd extends TheCommand.HasSub {
         }
 
         @Override
-        void execute(@NotNull String[] args) {
+        void execute(@NotNull String[] args, @NotNull MiraiGroupMessageEvent event) {
             // 踢出名单 移除 <QQ>
             String argQq = null;
 
             if (args.length > 0) argQq = args[0];
 
+            final Utility.AtMessageSender sender = new Utility.AtMessageSender(event.getGroup(), event.getSenderID());
+
             if (argQq == null) {
-                sendAtMessage("你必须指定一个QQ号码！");
+                sender.sendMessage("你必须指定一个QQ号码！");
                 return;
             }
 
@@ -250,7 +253,7 @@ class KickListAuditCmd extends TheCommand.HasSub {
             final Long qq = plugin.getUtility().parseQqId(argQq);
 
             if (qq == null) {
-                sendAtMessage("%s 中不包含QQ号码！".formatted(argQq));
+                sender.sendMessage("%s 中不包含QQ号码！".formatted(argQq));
                 return;
             }
 
@@ -260,7 +263,7 @@ class KickListAuditCmd extends TheCommand.HasSub {
             final List<IKickListAuditGroup.MemberInfo> list = session.getKickList();
 
             if (list == null) {
-                sendAtMessage("名单没有生成！");
+                sender.sendMessage("名单没有生成！");
                 return;
             }
 
@@ -271,7 +274,7 @@ class KickListAuditCmd extends TheCommand.HasSub {
 
             final int newSize = list.size();
 
-            sendAtMessage("名单人数变化：%d => %d".formatted(oldSize, newSize));
+            sender.sendMessage("名单人数变化：%d => %d".formatted(oldSize, newSize));
         }
     }
 }
